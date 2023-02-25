@@ -5,8 +5,10 @@ import { UserData } from "./Data";
 import LineChart from "./components/LineChart";
 import Papa from "papaparse";
 import { db, storage } from "./firebase-config";
-import { doc, setDoc, addDoc, collection } from "firebase/firestore";
+import { doc, setDoc, addDoc, collection, getDoc } from "firebase/firestore";
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { async } from "@firebase/util";
+import { Graphcomp } from "./Graphcomp";
 
 export default function App() {
   const [fileData, setFileData] = useState([]);
@@ -16,6 +18,9 @@ export default function App() {
   const [pname, setName] = useState();
   const [pid, setPid] = useState();
   const [page, setAge] = useState();
+  const [searchid, setSearchid] = useState();
+  const [pdata, setPdata] = useState({});
+  const [searched, setSearched] = useState(false);
   // const [userData, setUserData] = useState({
   //   labels: UserData.map((data) => data.time),
   //   datasets: [
@@ -45,13 +50,19 @@ export default function App() {
     const patientRef = collection(db, "patients");
     // console.log(UserData);
     console.log("UPLOADED DATA IS ", fileData);
-    const docRef = await addDoc(patientRef, {
+    // const docRef = await addDoc(patientRef, {
+    //   name: pname,
+    //   age: page,
+    //   patient_id: pid,
+    //   data: fileData,
+    // });
+
+    const docRef = await setDoc(doc(db, "patients", pid), {
       name: pname,
       age: page,
       patient_id: pid,
       data: fileData,
     });
-
     setDataupload(true);
   };
   const handleFileChosen = async (file) => {
@@ -96,6 +107,25 @@ export default function App() {
     if (file) {
       handleFileChosen(file);
     }
+  };
+
+  const searchID = async () => {
+    const docRef = doc(db, "patients", searchid);
+    const docSnap = await getDoc(docRef);
+    let mydata;
+    if (docSnap.exists()) {
+      mydata = docSnap.data();
+      setPdata(mydata);
+      setSearched(!searched);
+      console.log("Document data:", docSnap.data());
+    } else {
+      // doc.data() will be undefined in this case
+      console.log("No such document!");
+    }
+  };
+
+  const selectnew = () => {
+    setSearched(!searched);
   };
 
   return (
@@ -144,12 +174,31 @@ export default function App() {
           </div>
         ))}
 
-      <div className="bg-gray-100  rounded-sm flex flex-row justify-center items-center space-x-4">
-        <h1 className="bg-blue-600 text-white p-3">
-          {" "}
-          Choose the input CSV file:
-        </h1>
-        <input type="file" onChange={handleFileUpload} />
+      <div className="bg-gray-100   flex flex-col justify-center items-center space-x-4 space-y-4 p-3 rounded-md">
+        <div className="flex flex-row justify-center items-center space-x-2 bg-blue-200">
+          <h1 className="bg-blue-600 text-white p-3"> Add Entry</h1>
+          <input type="file" onChange={handleFileUpload} />
+        </div>
+        {!searched ? (
+          <div className="flex flex-row space-x-4 justify-center items-center bg-green-200 p-2 ">
+            <input
+              type="text"
+              placeholder="Enter Patient ID"
+              className="rounded-md p-2"
+              onChange={(e) => setSearchid(e.target.value)}
+            />
+            <button
+              className="bg-green-500 p-2 rounded-md text-white"
+              onClick={searchID}
+            >
+              SEARCH
+            </button>
+          </div>
+        ) : (
+          <div className="flex flex-col justify-center items-center">
+            <Graphcomp graphdata={pdata} fnc={selectnew} />
+          </div>
+        )}
       </div>
       {console.log(userData)}
     </div>
